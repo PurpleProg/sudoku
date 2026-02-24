@@ -32,13 +32,13 @@ pub fn main(init: std.process.Init) !void {
     }
 }
 
-fn get_row(grid: *const [4][4]u8, y: u8) ?[4]u8 {
+fn get_row(grid: *const [4][4]u8, y: usize) ?[4]u8 {
     if (y >= grid.len) {
         return null;
     }
     return grid[y];
 }
-fn get_column(grid: *const [4][4]u8, x: u8) ?[4]u8 {
+fn get_column(grid: *const [4][4]u8, x: usize) ?[4]u8 {
     if (x >= grid.len) {
         return null;
     }
@@ -62,8 +62,7 @@ fn is_full(grid: *const [4][4]u8) bool {
 fn is_solved(grid: *const [4][4]u8) bool {
     if (!is_full(grid))
         return false;
-    for (0..grid.len) |idx_usize| {
-        const idx: u8 = @intCast(idx_usize);
+    for (0..grid.len) |idx| {
         if (contain_double(get_row(grid, idx).?))
             return false;
         if (contain_double(get_column(grid, idx).?))
@@ -88,7 +87,7 @@ fn contain_double(array: [4]u8) bool {
     return false;
 }
 
-fn is_placement_possible(grid: *const [4][4]u8, x: u8, y: u8) bool {
+fn is_placement_possible(grid: *const [4][4]u8, x: usize, y: usize) bool {
     if (contain_double(get_row(grid, y).?))
         return false;
     if (contain_double(get_column(grid, x).?))
@@ -106,7 +105,7 @@ fn solve_grid(grid: *[4][4]u8) bool {
             // try to insert something possible, not a double of the lines
             for (0..grid.len) |value| {
                 grid[y][x] = @intCast(value + 1);
-                if (is_placement_possible(grid, @intCast(x), @intCast(y)))
+                if (is_placement_possible(grid, x, y))
                     // bubble up valid pos
                     if (solve_grid(grid))
                         return true;
