@@ -12,16 +12,14 @@ pub fn main(init: std.process.Init) !void {
     const stdout_writer = &stdout_file_writer.interface;
 
     // create
-    var grid: [4][4]u8 = [4][4]u8{
-        [_]u8{ 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0 },
-    };
+    var grid: [4][4]u8 = std.mem.zeroes([4][4]u8);
     try print_grid(&grid, stdout_writer);
 
     // solve
-    _ = solve_grid(&grid);
+    if (!solve_grid(&grid)) {
+        std.debug.print("No solution found :/\n", .{});
+        return;
+    }
     try print_grid(&grid, stdout_writer);
 
     // test
@@ -33,22 +31,36 @@ pub fn main(init: std.process.Init) !void {
 }
 
 fn get_row(grid: *const [4][4]u8, y: usize) ?[4]u8 {
-    if (y >= grid.len) {
+    if (y >= grid.len)
         return null;
-    }
     return grid[y];
 }
 fn get_column(grid: *const [4][4]u8, x: usize) ?[4]u8 {
-    if (x >= grid.len) {
+    if (x >= grid.len)
         return null;
-    }
-    var column: [4]u8 = [4]u8{ 0, 0, 0, 0 };
+    var column: [4]u8 = std.mem.zeroes([4]u8);
     for (0..grid.len) |y| {
         column[y] = grid[y][x];
     }
     return column;
 }
-// fn get_sub_square(grid: *const [4][4]u8, x: usize) void {}
+fn get_square(grid: *const [4][4]u8, x: usize, y: usize) ?[4]u8 {
+    if (x >= grid.len or y >= grid.len)
+        return null;
+    const square_size: usize = std.math.sqrt(4);
+    const square_x: usize = (x / square_size) * square_size;
+    const square_y: usize = (y / square_size) * square_size;
+
+    var square: [4]u8 = std.mem.zeroes([4]u8);
+    var i: usize = 0;
+    for (0..square_size) |dy| {
+        for (0..square_size) |dx| {
+            square[i] = grid[square_y + dy][square_x + dx];
+            i += 1;
+        }
+    }
+    return square;
+}
 
 fn is_full(grid: *const [4][4]u8) bool {
     for (0..grid.len) |x| {
@@ -60,14 +72,26 @@ fn is_full(grid: *const [4][4]u8) bool {
     return true;
 }
 fn is_solved(grid: *const [4][4]u8) bool {
+    // check for any empty cell
     if (!is_full(grid))
         return false;
+    // check every rows and columns
     for (0..grid.len) |idx| {
         if (contain_double(get_row(grid, idx).?))
             return false;
         if (contain_double(get_column(grid, idx).?))
             return false;
     }
+    // check every squares
+    const square_size: usize = std.math.sqrt(4);
+    for (0..square_size) |y| {
+        for (0..square_size) |x| {
+            const square = get_square(grid, x * square_size, y * square_size).?;
+            if (contain_double(square))
+                return false;
+        }
+    }
+
     return true;
 }
 
@@ -91,6 +115,8 @@ fn is_placement_possible(grid: *const [4][4]u8, x: usize, y: usize) bool {
     if (contain_double(get_row(grid, y).?))
         return false;
     if (contain_double(get_column(grid, x).?))
+        return false;
+    if (contain_double(get_square(grid, x, y).?))
         return false;
     return true;
 }
