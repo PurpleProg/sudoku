@@ -13,8 +13,11 @@ pub fn main(init: std.process.Init) !void {
 
     // create
     const size: usize = 9;
-    // assert size is a perfect square
+    const square_size: usize = comptime std.math.sqrt(size);
+    std.debug.assert(square_size * square_size == size);
+
     var grid: [size][size]u8 = std.mem.zeroes([size][size]u8);
+    grid[1][2] = 9;
     try print_grid(size, &grid, stdout_writer);
 
     // solve
@@ -147,20 +150,45 @@ fn solve_grid(comptime size: usize, grid: *[size][size]u8) bool {
 }
 
 fn print_grid(comptime size: usize, grid: *const [size][size]u8, writer: *Io.Writer) !void {
-    try writer.print("╭" ++ "───┬" ** (size - 1) ++ "───╮\n", .{});
+    const square_size: usize = comptime std.math.sqrt(size);
+
+    // compute ascii patterns
+    const header: []const u8 = "┏" //
+        ++ ("━━━┯" ** (square_size - 1) ++ "━━━┳") // repeat
+        ** (square_size - 1) ++ "━━━┯" ** (square_size - 1) ++ "━━━┓\n";
+    const middle: []const u8 = "\n┠" // use bold to indicate squares
+        ++ ("───┼" ** (square_size - 1) ++ "───╂") // pattern
+        ** (square_size - 1) ++ "───┼" ** (square_size - 1) ++ "───┨\n";
+    const middle_bold: []const u8 = "\n┣" // use bold to indicate squares
+        ++ ("━━━┿" ** (square_size - 1) ++ "━━━╋") // pattern
+        ** (square_size - 1) ++ "━━━┿" ** (square_size - 1) ++ "━━━┫\n";
+    const footer: []const u8 = "\n┗" //
+        ++ ("━━━┷" ** (square_size - 1) ++ "━━━┻") // pattern
+        ** (square_size - 1) ++ "━━━┷" ** (square_size - 1) ++ "━━━┛\n";
+
+    try writer.print(header, .{});
     for (0..size) |y| {
-        try writer.print("│", .{});
+        try writer.print("┃", .{});
         for (0..size) |x| {
             if (grid[y][x] == 0) {
-                try writer.print("   │", .{});
+                try writer.print("   ", .{});
             } else {
-                try writer.print("{: ^3}│", .{grid[y][x]});
+                try writer.print("{: ^3}", .{grid[y][x]});
+            }
+            if (x % square_size == square_size - 1) {
+                try writer.print("┃", .{});
+            } else {
+                try writer.print("│", .{});
             }
         }
-        if (y < size - 1) {
-            try writer.print("\n├" ++ "───┼" ** (size - 1) ++ "───┤\n", .{});
+        if (y == size - 1) {
+            try writer.print(footer, .{});
+            break;
+        }
+        if (y % square_size == square_size - 1) {
+            try writer.print(middle_bold, .{});
         } else {
-            try writer.print("\n╰" ++ "───┴" ** (size - 1) ++ "───╯\n", .{});
+            try writer.print(middle, .{});
         }
     }
     try writer.flush();
