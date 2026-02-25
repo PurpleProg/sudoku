@@ -1,6 +1,12 @@
 const std = @import("std");
 const Io = std.Io;
 
+const SIZE: usize = 9;
+const SQUARE_SIZE: usize = std.math.sqrt(SIZE);
+comptime {
+    std.debug.assert(SQUARE_SIZE * SQUARE_SIZE == SIZE);
+}
+
 pub fn main(init: std.process.Init) !void {
     // This is appropriate for anything that lives as long as the process.
     // const arena: std.mem.Allocator = init.arena.allocator();
@@ -11,28 +17,26 @@ pub fn main(init: std.process.Init) !void {
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const stdout_writer = &stdout_file_writer.interface;
 
-    // create
-    const size: usize = 9;
-    const square_size: usize = comptime std.math.sqrt(size);
-    std.debug.assert(square_size * square_size == size);
-
     // exemple generated from https://sudokusolver.app/
-    var grid: [size][size]u8 = load(size, "000030071009020008800004002030100700008000034290000500400000000023761005007008000").?;
-    try print_grid(size, &grid, stdout_writer);
+    // var grid: [size][size]u8 = load(size, "000030071009020008800004002030100700008000034290000500400000000023761005007008000").?;
 
-    // solve
-    if (!solve_grid(size, &grid)) {
+    // hardest to bruteforce from https://en.wikipedia.org/wiki/Sudoku_solving_algorithms#Sudoku_brute_force
+    var grid: [SIZE][SIZE]u8 = load(SIZE, "000000000000003085001020000000507000004000100090000000500000073002010000000040009").?;
+
+    // empty grid
+    // var grid: [size][size]u8 = std.mem.zeroes([size][size]u8);
+
+    // print the initial grid
+    try print_grid(SIZE, &grid, stdout_writer);
+
+    // try to find a solution
+    if (!solve_grid(SIZE, &grid)) {
         std.debug.print("sizeo solution found :/\n", .{});
         return;
     }
-    try print_grid(size, &grid, stdout_writer);
 
-    // test
-    if (is_solved(size, &grid)) {
-        std.debug.print("valid!\n", .{});
-    } else {
-        std.debug.print("invalid.\n", .{});
-    }
+    // print the solution
+    try print_grid(SIZE, &grid, stdout_writer);
 }
 
 fn load(comptime size: usize, str: []const u8) ?[size][size]u8 {
@@ -49,94 +53,27 @@ fn load(comptime size: usize, str: []const u8) ?[size][size]u8 {
     return grid;
 }
 
-fn get_row(comptime size: usize, grid: *const [size][size]u8, y: usize) ?[size]u8 {
-    if (y >= size)
-        return null;
-    return grid[y];
-}
-fn get_column(comptime size: usize, grid: *const [size][size]u8, x: usize) ?[size]u8 {
-    if (x >= size)
-        return null;
-    var column: [size]u8 = std.mem.zeroes([size]u8);
-    for (0..size) |y| {
-        column[y] = grid[y][x];
+fn is_value_possible(comptime size: usize, grid: *const [size][size]u8, x: usize, y: usize, value: u8) bool {
+    // row
+    for (0..size) |i| {
+        if (grid[y][i] == value)
+            return false;
     }
-    return column;
-}
-fn get_square(comptime size: usize, grid: *const [size][size]u8, x: usize, y: usize) ?[size]u8 {
-    if (x >= size or y >= size)
-        return null;
+    // column
+    for (0..size) |i| {
+        if (grid[i][x] == value)
+            return false;
+    }
+    // square
     const square_size: usize = std.math.sqrt(size);
     const square_x: usize = (x / square_size) * square_size;
     const square_y: usize = (y / square_size) * square_size;
-
-    var square: [size]u8 = std.mem.zeroes([size]u8);
-    var i: usize = 0;
     for (0..square_size) |dy| {
         for (0..square_size) |dx| {
-            square[i] = grid[square_y + dy][square_x + dx];
-            i += 1;
-        }
-    }
-    return square;
-}
-
-fn is_full(comptime size: usize, grid: *const [size][size]u8) bool {
-    for (0..size) |x| {
-        for (0..size) |y| {
-            if (grid[y][x] == 0)
+            if (grid[square_y + dy][square_x + dx] == value)
                 return false;
         }
     }
-    return true;
-}
-fn is_solved(comptime size: usize, grid: *const [size][size]u8) bool {
-    // check for any empty cell
-    if (!is_full(size, grid))
-        return false;
-    // check every rows and columns
-    for (0..size) |idx| {
-        if (contain_double(size, get_row(size, grid, idx).?))
-            return false;
-        if (contain_double(size, get_column(size, grid, idx).?))
-            return false;
-    }
-    // check every squares
-    const square_size: usize = std.math.sqrt(size);
-    for (0..square_size) |y| {
-        for (0..square_size) |x| {
-            const square = get_square(size, grid, x * square_size, y * square_size).?;
-            if (contain_double(size, square))
-                return false;
-        }
-    }
-
-    return true;
-}
-
-/// skips 0s
-fn contain_double(comptime size: usize, array: [size]u8) bool {
-    for (0..size - 1) |i| {
-        for (i + 1..size) |j| {
-            if (array[i] == 0 or array[j] == 0)
-                continue;
-            // labled loop continue can skip like 3 iteration if array[i] is 0
-            // but "premature optimization is the root of all evil"
-            // litteraly already O(1) function wtf do i want to optimize
-            if (array[i] == array[j])
-                return true;
-        }
-    }
-    return false;
-}
-
-fn is_placement_possible(comptime size: usize, grid: *const [size][size]u8, x: usize, y: usize) bool {
-    if (contain_double(size, get_row(size, grid, y).?))
-        return false;
-    if (contain_double(size, get_column(size, grid, x).?))
-        return false;
-    if (contain_double(size, get_square(size, grid, x, y).?))
-        return false;
     return true;
 }
 
@@ -148,12 +85,15 @@ fn solve_grid(comptime size: usize, grid: *[size][size]u8) bool {
             if (grid[y][x] > 0)
                 continue;
             // try to insert something possible, not a double of the lines
-            for (0..size) |value| {
-                grid[y][x] = @intCast(value + 1);
-                if (is_placement_possible(size, grid, x, y))
-                    // bubble up valid pos
-                    if (solve_grid(size, grid))
-                        return true;
+            for (0..size) |i| {
+                const value: u8 = @intCast(i + 1);
+                if (!is_value_possible(size, grid, x, y, value)) {
+                    continue;
+                }
+                grid[y][x] = value;
+                // bubble up valid pos
+                if (solve_grid(size, grid))
+                    return true;
             }
             // backtrack
             grid[y][x] = 0;
@@ -207,11 +147,3 @@ fn print_grid(comptime size: usize, grid: *const [size][size]u8, writer: *Io.Wri
     }
     try writer.flush();
 }
-
-// test "simple test" {
-//     const gpa = std.testing.allocator;
-//     var list: std.ArrayList(i32) = .empty;
-//     defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
-//     try list.append(gpa, 42);
-//     try std.testing.expectEqual(@as(i32, 42), list.pop());
-// }
