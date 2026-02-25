@@ -16,8 +16,8 @@ pub fn main(init: std.process.Init) !void {
     const square_size: usize = comptime std.math.sqrt(size);
     std.debug.assert(square_size * square_size == size);
 
-    var grid: [size][size]u8 = std.mem.zeroes([size][size]u8);
-    grid[1][2] = 9;
+    // exemple generated from https://sudokusolver.app/
+    var grid: [size][size]u8 = load(size, "000030071009020008800004002030100700008000034290000500400000000023761005007008000").?;
     try print_grid(size, &grid, stdout_writer);
 
     // solve
@@ -33,6 +33,20 @@ pub fn main(init: std.process.Init) !void {
     } else {
         std.debug.print("invalid.\n", .{});
     }
+}
+
+fn load(comptime size: usize, str: []const u8) ?[size][size]u8 {
+    if (str.len != size * size)
+        return null;
+    var grid: [size][size]u8 = std.mem.zeroes([size][size]u8);
+    for (str, 0..str.len) |char, i| {
+        if (char < '0' or char > '9')
+            return null;
+        const x: usize = i % size;
+        const y: usize = i / size;
+        grid[y][x] = char - '0';
+    }
+    return grid;
 }
 
 fn get_row(comptime size: usize, grid: *const [size][size]u8, y: usize) ?[size]u8 {
