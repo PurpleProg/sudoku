@@ -18,10 +18,10 @@ pub fn main(init: std.process.Init) !void {
     const stdout_writer = &stdout_file_writer.interface;
 
     // exemple generated from https://sudokusolver.app/
-    // var grid: [size][size]u8 = load(size, "000030071009020008800004002030100700008000034290000500400000000023761005007008000").?;
+    var grid: [SIZE][SIZE]u8 = load(SIZE, "000030071009020008800004002030100700008000034290000500400000000023761005007008000").?;
 
     // hardest to bruteforce from https://en.wikipedia.org/wiki/Sudoku_solving_algorithms#Sudoku_brute_force
-    var grid: [SIZE][SIZE]u8 = load(SIZE, "000000000000003085001020000000507000004000100090000000500000073002010000000040009").?;
+    // var grid: [SIZE][SIZE]u8 = load(SIZE, "000000000000003085001020000000507000004000100090000000500000073002010000000040009").?;
 
     // empty grid
     // var grid: [size][size]u8 = std.mem.zeroes([size][size]u8);
